@@ -11,7 +11,10 @@
   },
   "tauri": {
     "allowlist": {
-      "all": false
+      "all": false,
+      "window": {
+        "all": true
+      }
     },
     "bundle": {
       "active": true,
@@ -59,7 +62,7 @@
         "resizable": false,
         "title": "Glyph",
         "width": 400,
-        "titleBarStyle": "overlay"
+        "titleBarStyle": "Overlay"
       }
     ]
   }

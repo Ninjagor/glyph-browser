@@ -5,6 +5,12 @@ import { RotatingLines } from 'react-loader-spinner';
 import { invoke } from '@tauri-apps/api/tauri'
 import { emit, listen } from '@tauri-apps/api/event'
 
+// async function listeners() {
+//   const check_file_done_listener = await listen('check_files_done', (event) => {
+//     alert("SUP")
+//   })
+// }
+
 export default function Home() {
   const [loadingState, setLoadingState] = useState<string>("Verifying Files");
 
@@ -13,13 +19,24 @@ export default function Home() {
 
     invoke('check_files') // invoke rust code, if fails then the program will auto quit.
 
-    setLoadingState("Installing Glyph. Please be Patient.")
+    // more steps will be recieved via the tauri emitter thingy
+    }, []);
 
-  }, [])
+    const check_file_done_listener = listen('check_files_done', (event) => {
+      if (!(loadingState == "Installing Glyph. Please be Patient.")) {
+        setLoadingState("Checking For Updates")
+      }
+    })
+
+    const install_needed = listen('install_needed', (event) => {
+      setLoadingState("Installing Glyph. Please be Patient.")
+      invoke("update_glpyh")
+    })
+  
 
   return (
     <>
-    <div className="w-full h-[100vh] bg-white text-black flex items-center justify-center gap-3 flex-col">
+    <div  data-tauri-drag-region  className="titlebar w-full h-[100vh] bg-white text-black flex items-center justify-center gap-3 flex-col">
       <h1 className="text-5xl font-semibold tracking-tight">Glyph</h1>
       <hr className="mt-8" />
       <p className="text-sm opacity-50">{loadingState}</p>
