@@ -25,12 +25,22 @@ export default function Home() {
     const check_file_done_listener = listen('check_files_done', (event) => {
       if (!(loadingState == "Installing Glyph. Please be Patient.")) {
         setLoadingState("Checking For Updates")
+        invoke("check_for_updates");
       }
     })
 
     const install_needed = listen('install_needed', (event) => {
       setLoadingState("Installing Glyph. Please be Patient.")
-      invoke("update_glpyh")
+      invoke("update_glyph")
+    })
+
+    const launch_glyph = listen('launch_glyph', (event) => {
+      setLoadingState("Launching Glyph")
+      invoke("launch_glyph")
+    })
+
+    const launched = listen('launched', (event) => {
+      setLoadingState("Launching Glyph...")
     })
   
 

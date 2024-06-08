@@ -139,10 +139,12 @@ async fn check_for_updates() {
       let sha = response.sha;
 
       if sha == stored_commit_sha {
+        isUpdateNeeded = false;
+      } else {
         isUpdateNeeded = true;
       }
-
   }
+  
 
   let app = TAURI_APP.lock().unwrap();
   if let Some(app_handle) = &*app {
@@ -156,18 +158,113 @@ async fn check_for_updates() {
 }
 
 #[tauri::command]
-fn update_glyph() {
+async fn update_glyph() {
+  use std::fs;
+  use std::io::copy;
+  use std::os::unix::fs::PermissionsExt;
+  use std::path::Path;
+  use std::error::Error;
+  use std::env;
 
+  if cfg!(target_os = "windows") {
+
+  } else {
+    let url = "https://github.com/Ninjagor/glyph-browser/blob/main/bin/glyph-browser?raw=true";
+
+    let home_dir = env::var("HOME").expect("home dir failed");
+
+    let bin_dir = Path::new(&home_dir).join("bin");
+    let glyph_dir = bin_dir.join("glyph");
+    let glyph_exe = glyph_dir.join("glyph-browser");
+
+    // Create the bin and glyph directories if they don't exist
+    if !bin_dir.exists() {
+        fs::create_dir_all(&bin_dir).expect("bin creation failed");
+    }
+
+    if !glyph_dir.exists() {
+        fs::create_dir_all(&glyph_dir).expect("glyph directory creation failed");
+    }
+
+    // Check if the glyph-browser file exists and remove it
+    if glyph_exe.exists() && glyph_exe.is_file() {
+        fs::remove_file(&glyph_exe).expect("failed to remove existing glyph-browser file");
+    }
+
+    let response = reqwest::Client::new()
+      .get(url)
+      .send()
+      .await
+      .expect("UH OH SUSSY BAKA")
+      ;
+
+    let mut exe = fs::File::create(&glyph_exe).expect("Failed to create exe");
+    let body = response.bytes().await.expect("exe invalid");
+    std::io::copy(&mut body.as_ref(), &mut exe).expect("Failed to copy content");
+
+    let mut perms = exe.metadata().expect("Failed to get metadata").permissions();
+    perms.set_mode(0o755); // rwxr-xr-x
+    exe.set_permissions(perms).expect("Failed to set permissions");
+  }
+
+  let app = TAURI_APP.lock().unwrap();
+  if let Some(app_handle) = &*app {
+      app_handle.emit_all("launch_glyph", Payload { message: "".into() }).unwrap();
+  }
 }
 
 #[tauri::command]
-fn launch_glpyh() {
+fn launch_glyph() {
+  use std::fs;
+  use std::io::copy;
+  use std::os::unix::fs::PermissionsExt;
+  use std::path::Path;
+  use std::error::Error;
+  use std::env;
+  use std::process::{Command, Stdio};
 
+  if cfg!(target_os = "windows") {
+  } else {
+    let home_dir = env::var("HOME").expect("home dir failed");
+
+    let bin_dir = Path::new(&home_dir).join("bin");
+    let glyph_dir = bin_dir.join("glyph");
+    let glyph_exe = glyph_dir.join("glyph-browser");
+
+    println!("launch stage 1");
+
+    if glyph_exe.exists() && glyph_exe.is_file() {
+      println!("launch stage 2");
+
+      let app = TAURI_APP.lock().unwrap();
+      if let Some(app_handle) = &*app {
+        app_handle.emit_all("launched", Payload { message: "".into() }).unwrap();
+      }
+
+      std::thread::sleep(std::time::Duration::from_secs(2));
+
+      std::thread::spawn(move || {
+        let mut child = Command::new(glyph_exe)
+            .stdin(Stdio::null())
+            .stdout(Stdio::inherit())
+            .stderr(Stdio::inherit())
+            .spawn()
+            .expect("failed to execute process");
+
+        let _ = child.wait().expect("child process wasn't running");
+        println!("launch stage 3");
+    });
+      } else {
+          eprintln!("Executable not found at {:?}", glyph_exe);
+      }
+  }
+  println!("finished");
+  std::process::exit(0);
 }
 
 fn main() {
   tauri::Builder::default()
-    .invoke_handler(tauri::generate_handler![check_files, check_for_updates, update_glyph, launch_glpyh])
+    .invoke_handler(tauri::generate_handler![check_files, check_for_updates, update_glyph, launch_glyph])
     .setup(|app| {
       let app_handle = app.handle().clone();
       let mut app_lock = TAURI_APP.lock().unwrap();
